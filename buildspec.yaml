@@ -44,6 +44,7 @@ phases:
 
       - echo Replacing image placeholders in Kubernetes manifests...
       - mkdir -p k8s-out/Frontend k8s-out/Backend
+
       - sed "s|IMAGE_PLACEHOLDER|${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com/$FRONTEND_REPO:$IMAGE_TAG|g" $K8S_MANIFEST_DIR/Frontend/deployment.yaml > k8s-out/Frontend/deployment.yaml
       - cp $K8S_MANIFEST_DIR/Frontend/service.yaml k8s-out/Frontend/service.yaml
 
@@ -55,10 +56,14 @@ phases:
       - cp $K8S_MANIFEST_DIR/Database/*.yaml k8s-out/Database/
       - cp $K8S_MANIFEST_DIR/ingress.yaml k8s-out/
 
-      # ✅ Ensure required manifests are at root for CodePipeline deployment step
-      - echo Creating root-level deployment.yaml and service.yaml...
-      - cp k8s-out/Frontend/deployment.yaml k8s-out/deployment.yaml
-      - cp k8s-out/Frontend/service.yaml k8s-out/service.yaml
+      # ✅ Combine all manifests into one deployment.yaml for CodePipeline
+      - echo Creating single deployment.yaml including all components...
+      - cat k8s-out/Frontend/deployment.yaml > k8s-out/deployment.yaml
+      - cat k8s-out/Frontend/service.yaml >> k8s-out/deployment.yaml
+      - cat k8s-out/Backend/deployment.yaml >> k8s-out/deployment.yaml
+      - cat k8s-out/Backend/service.yaml >> k8s-out/deployment.yaml
+      - cat k8s-out/Database/*.yaml >> k8s-out/deployment.yaml
+      - cat k8s-out/ingress.yaml >> k8s-out/deployment.yaml
 
 artifacts:
   base-directory: k8s-out

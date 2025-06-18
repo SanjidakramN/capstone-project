@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Three Tier Architecture with VPC, Subnets, NAT, IGW, Route Tables, Security Groups, IAM, EKS Cluster, and NodeGroup
+Description: EKS Cluster with VPC, Subnets, NAT, IGW, Route Tables, IAM, and NodeGroup
 
 Parameters:
   VpcCIDR:
@@ -19,6 +19,7 @@ Parameters:
     Default: 10.0.4.0/24
 
 Resources:
+
   VPC:
     Type: AWS::EC2::VPC
     Properties:
@@ -48,6 +49,10 @@ Resources:
       Tags:
         - Key: Name
           Value: PublicSubnet1
+        - Key: kubernetes.io/role/elb
+          Value: "1"
+        - Key: kubernetes.io/cluster/ThreeTierEKSCluster
+          Value: "shared"
 
   PublicSubnet2:
     Type: AWS::EC2::Subnet
@@ -59,6 +64,10 @@ Resources:
       Tags:
         - Key: Name
           Value: PublicSubnet2
+        - Key: kubernetes.io/role/elb
+          Value: "1"
+        - Key: kubernetes.io/cluster/ThreeTierEKSCluster
+          Value: "shared"
 
   PrivateSubnet1:
     Type: AWS::EC2::Subnet
@@ -69,6 +78,10 @@ Resources:
       Tags:
         - Key: Name
           Value: PrivateSubnet1
+        - Key: kubernetes.io/role/internal-elb
+          Value: "1"
+        - Key: kubernetes.io/cluster/ThreeTierEKSCluster
+          Value: "shared"
 
   PrivateSubnet2:
     Type: AWS::EC2::Subnet
@@ -79,6 +92,10 @@ Resources:
       Tags:
         - Key: Name
           Value: PrivateSubnet2
+        - Key: kubernetes.io/role/internal-elb
+          Value: "1"
+        - Key: kubernetes.io/cluster/ThreeTierEKSCluster
+          Value: "shared"
 
   NatEIP:
     Type: AWS::EC2::EIP
@@ -155,6 +172,7 @@ Resources:
             Action: sts:AssumeRole
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/AmazonEKSClusterPolicy
+        - arn:aws:iam::aws:policy/AmazonEKSServicePolicy
       RoleName: EKS-Cluster-Role
 
   EKSCluster:

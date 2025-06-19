@@ -409,6 +409,7 @@ Resources:
         - arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy
         - arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy
         - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore # ADDED FOR DEBUGGING
       Tags:
         - Key: Name
           Value: !Sub ${AWS::StackName}-EKSNodegroupRole
@@ -422,8 +423,6 @@ Resources:
       Subnets:
         - !Ref PrivateSubnet1
         - !Ref PrivateSubnet2
-      # Removed the RemoteAccess block to resolve the 'null' value error.
-      # If you need SSH access later, re-add it conditionally with a valid key.
       ScalingConfig:
         DesiredSize: !Ref EKSDesiredSize
         MaxSize: !Ref EKSMaxSize

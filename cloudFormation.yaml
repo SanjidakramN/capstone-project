@@ -75,14 +75,15 @@ Parameters:
   DBPassword:
     Type: String
     NoEcho: true
-    Description: Master password for the RDS database. Must be at least 8 characters
-      and contain uppercase, lowercase, numbers, and special characters.
-    Default: MySecureP@ssw0rd!123 # Added a default password for easier testing. REMOVE FOR PRODUCTION!
+    Description: Master password for the RDS database. Must be at least 8 characters,
+      contain uppercase, lowercase, numbers, and special characters. Allowed characters
+      exclude '/', '@', '"', and space.
+    Default: MySecurePwd123! # Updated default password to comply with RDS restrictions
     MinLength: 8
     MaxLength: 41
-    AllowedPattern: ^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^a-zA-Z0-9]).{8,41}$
+    AllowedPattern: ^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!"#$%&'()*+,\-.:;<=>?\[\\\]^_`{|}~]).{8,41}$ # Updated pattern to exclude /, @, ", space
     ConstraintDescription: Must be at least 8 characters and contain uppercase,
-      lowercase, numbers, and special characters.
+      lowercase, numbers, and special characters. Allowed characters exclude '/', '@', '"', and space.
   DBName:
     Type: String
     Default: mydatabase

@@ -422,10 +422,8 @@ Resources:
       Subnets:
         - !Ref PrivateSubnet1
         - !Ref PrivateSubnet2
-      RemoteAccess:
-        Ec2SshKey: # Optional: Add a key pair name here if you need SSH access to nodes, e.g., !Ref SSHKeyPairName
-        SourceSecurityGroups:
-          - !GetAtt SecurityGroupEKSWorkers.GroupId
+      # Removed the RemoteAccess block to resolve the 'null' value error.
+      # If you need SSH access later, re-add it conditionally with a valid key.
       ScalingConfig:
         DesiredSize: !Ref EKSDesiredSize
         MaxSize: !Ref EKSMaxSize

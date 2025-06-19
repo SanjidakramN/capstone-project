@@ -1,8 +1,10 @@
 AWSTemplateFormatVersion: '2010-09-09'
 
-Description: AWS CloudFormation template for a microservices infrastructure, including a VPC,
+Description: >
+  AWS CloudFormation template for a microservices infrastructure, including a VPC,
   EKS cluster, Multi-AZ RDS database, CloudWatch logging, Security Groups, NACLs,
   and IAM roles. This self-contained solution excludes ALB and S3.
+
 Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
@@ -75,6 +77,7 @@ Parameters:
     NoEcho: true
     Description: Master password for the RDS database. Must be at least 8 characters
       and contain uppercase, lowercase, numbers, and special characters.
+    Default: MySecureP@ssw0rd!123 # Added a default password for easier testing. REMOVE FOR PRODUCTION!
     MinLength: 8
     MaxLength: 41
     AllowedPattern: ^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^a-zA-Z0-9]).{8,41}$

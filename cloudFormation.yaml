@@ -374,6 +374,26 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub ${AWS::StackName}-EKSWorkersSG
+      # Explicit Egress rules for worker nodes
+      SecurityGroupEgress: # ADDED EXPLICIT EGRESS RULES
+        # Allow outbound to EKS Control Plane
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          DestinationSecurityGroupId: !GetAtt SecurityGroupEKSControlPlane.GroupId
+          Description: Allow outbound to EKS Control Plane API
+        # Allow outbound to RDS
+        - IpProtocol: tcp
+          FromPort: 3306 # MySQL/Aurora port
+          ToPort: 3306
+          DestinationSecurityGroupId: !GetAtt SecurityGroupRDS.GroupId
+          Description: Allow outbound to RDS database
+        # Allow outbound to the internet via NAT Gateway (for pulling images, updates, EKS public endpoint access)
+        - IpProtocol: -1 # All protocols
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 0.0.0.0/0
+          Description: Allow all outbound internet traffic
 
   # EKS Workers Ingress Rules (from EKS Control Plane and self-traffic)
   EKSWorkersIngressFromEKSControlPlaneAPI:

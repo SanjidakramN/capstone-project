@@ -348,24 +348,16 @@ Resources:
       SubnetId: !Ref PrivateSubnet2
       NetworkAclId: !Ref PrivateNetworkAcl
 
-  # Security Groups
-  # Security Group for EKS Control Plane
+  # Security Groups (Defined without ingress/egress rules initially to break circular dependency)
   SecurityGroupEKSControlPlane:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Security group for EKS control plane API access
       VpcId: !Ref MyVPC
-      SecurityGroupIngress:
-        # Allow EKS worker nodes to communicate with the control plane API
-        - IpProtocol: tcp
-          FromPort: 443
-          ToPort: 443
-          SourceSecurityGroupId: !GetAtt SecurityGroupEKSWorkers.GroupId
       Tags:
         - Key: Name
           Value: !Sub ${AWS::StackName}-EKSControlPlaneSG
 
-  # Security Group for EKS Worker Nodes
   SecurityGroupEKSWorkers:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -374,57 +366,7 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub ${AWS::StackName}-EKSWorkersSG
-      # Explicit Egress rules for worker nodes
-      SecurityGroupEgress: # ADDED EXPLICIT EGRESS RULES
-        # Allow outbound to EKS Control Plane
-        - IpProtocol: tcp
-          FromPort: 443
-          ToPort: 443
-          DestinationSecurityGroupId: !GetAtt SecurityGroupEKSControlPlane.GroupId
-          Description: Allow outbound to EKS Control Plane API
-        # Allow outbound to RDS
-        - IpProtocol: tcp
-          FromPort: 3306 # MySQL/Aurora port
-          ToPort: 3306
-          DestinationSecurityGroupId: !GetAtt SecurityGroupRDS.GroupId
-          Description: Allow outbound to RDS database
-        # Allow outbound to the internet via NAT Gateway (for pulling images, updates, EKS public endpoint access)
-        - IpProtocol: -1 # All protocols
-          FromPort: -1
-          ToPort: -1
-          CidrIp: 0.0.0.0/0
-          Description: Allow all outbound internet traffic
 
-  # EKS Workers Ingress Rules (from EKS Control Plane and self-traffic)
-  EKSWorkersIngressFromEKSControlPlaneAPI:
-    Type: AWS::EC2::SecurityGroupIngress
-    Properties:
-      GroupId: !GetAtt SecurityGroupEKSWorkers.GroupId
-      IpProtocol: tcp
-      FromPort: 443 # EKS API server port
-      ToPort: 443
-      SourceSecurityGroupId: !GetAtt SecurityGroupEKSControlPlane.GroupId
-      Description: Allow EKS control plane to communicate with worker nodes (API server)
-  EKSWorkersIngressFromEKSControlPlaneKubelet:
-    Type: AWS::EC2::SecurityGroupIngress
-    Properties:
-      GroupId: !GetAtt SecurityGroupEKSWorkers.GroupId
-      IpProtocol: tcp
-      FromPort: 10250 # Kubelet port
-      ToPort: 10250
-      SourceSecurityGroupId: !GetAtt SecurityGroupEKSControlPlane.GroupId
-      Description: Allow EKS control plane to communicate with worker nodes (Kubelet)
-  EKSWorkersIngressSelfClusterTraffic:
-    Type: AWS::EC2::SecurityGroupIngress
-    Properties:
-      GroupId: !GetAtt SecurityGroupEKSWorkers.GroupId
-      IpProtocol: -1 # All protocols
-      FromPort: -1
-      ToPort: -1
-      SourceSecurityGroupId: !GetAtt SecurityGroupEKSWorkers.GroupId
-      Description: Allow all traffic within the EKS worker nodes security group
-
-  # Security Group for RDS Database
   SecurityGroupRDS:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -434,18 +376,67 @@ Resources:
         - Key: Name
           Value: !Sub ${AWS::StackName}-RDSSG
 
-  # RDS Ingress Rule
-  RDSIngressFromEKSWorkers:
-    Type: AWS::EC2::SecurityGroupIngress
+  # EKS Cluster (references SecurityGroupEKSControlPlane)
+  MyEKSCluster:
+    Type: AWS::EKS::Cluster
     Properties:
-      GroupId: !GetAtt SecurityGroupRDS.GroupId
-      IpProtocol: tcp
-      FromPort: 3306 # Default MySQL/Aurora port
-      ToPort: 3306
-      SourceSecurityGroupId: !GetAtt SecurityGroupEKSWorkers.GroupId
-      Description: Allow MySQL traffic from EKS worker nodes
+      Name: !Ref EKSClusterName
+      RoleArn: !GetAtt EKSClusterRole.Arn
+      ResourcesVpcConfig:
+        SubnetIds:
+          - !Ref PrivateSubnet1
+          - !Ref PrivateSubnet2
+        SecurityGroupIds:
+          - !GetAtt SecurityGroupEKSControlPlane.GroupId
+        # EndpointPublicAccess: true # Uncomment and set to false for private-only endpoint
+        # EndpointPrivateAccess: false # Uncomment and set to true if you want private-only access
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-EKSCluster
 
-  # RDS Database
+  # EKS Node Group Role
+  MyEKSNodegroupRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Action: sts:AssumeRole
+            Principal:
+              Service: ec2.amazonaws.com
+            Effect: Allow
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy
+        - arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy
+        - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-EKSNodegroupRole
+
+  # EKS Node Group (references MyEKSCluster and SecurityGroupEKSWorkers)
+  MyNodeGroup:
+    Type: AWS::EKS::Nodegroup
+    Properties:
+      ClusterName: !Ref MyEKSCluster
+      NodeRole: !GetAtt MyEKSNodegroupRole.Arn
+      Subnets:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      RemoteAccess:
+        Ec2SshKey: # Optional: Add a key pair name here if you need SSH access to nodes, e.g., !Ref SSHKeyPairName
+        SourceSecurityGroups:
+          - !GetAtt SecurityGroupEKSWorkers.GroupId
+      ScalingConfig:
+        DesiredSize: !Ref EKSDesiredSize
+        MaxSize: !Ref EKSMaxSize
+        MinSize: !Ref EKSMinSize
+      Labels:
+        app: my-app
+      Tags:
+        Name: !Sub ${AWS::StackName}-EKSNodeGroup
+        eks:cluster-name: !Ref EKSClusterName
+
+  # RDS Database (references MyDBSubnetGroup and SecurityGroupRDS)
   MyDBSubnetGroup:
     Type: AWS::RDS::DBSubnetGroup
     Properties:
@@ -476,67 +467,6 @@ Resources:
         - Key: Name
           Value: !Sub ${AWS::StackName}-RDSDBInstance
 
-  # EKS Cluster
-  MyEKSCluster:
-    Type: AWS::EKS::Cluster
-    Properties:
-      Name: !Ref EKSClusterName
-      RoleArn: !GetAtt EKSClusterRole.Arn
-      ResourcesVpcConfig:
-        # EKS control plane ENIs will be created in these subnets
-        SubnetIds:
-          - !Ref PrivateSubnet1
-          - !Ref PrivateSubnet2
-        # Associate the EKS control plane with its dedicated security group
-        SecurityGroupIds:
-          - !GetAtt SecurityGroupEKSControlPlane.GroupId
-        # Setting PublicAccessEndpoint to true by default; set to false for private-only endpoint
-        # EndpointPublicAccess: true
-        # EndpointPrivateAccess: false # Set to true if you want private-only access
-      Tags:
-        - Key: Name
-          Value: !Sub ${AWS::StackName}-EKSCluster
-
-  MyEKSNodegroupRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Action: sts:AssumeRole
-            Principal:
-              Service: ec2.amazonaws.com
-            Effect: Allow
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy
-        - arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy
-        - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
-      Tags:
-        - Key: Name
-          Value: !Sub ${AWS::StackName}-EKSNodegroupRole
-
-  MyNodeGroup:
-    Type: AWS::EKS::Nodegroup
-    Properties:
-      ClusterName: !Ref MyEKSCluster
-      NodeRole: !GetAtt MyEKSNodegroupRole.Arn
-      # Worker nodes should be placed in private subnets for security
-      Subnets:
-        - !Ref PrivateSubnet1
-        - !Ref PrivateSubnet2
-      # Removed the RemoteAccess block to resolve the 'null' value error.
-      # If you need SSH access later, re-add it conditionally with a valid key.
-      ScalingConfig:
-        DesiredSize: !Ref EKSDesiredSize
-        MaxSize: !Ref EKSMaxSize
-        MinSize: !Ref EKSMinSize
-      Labels:
-        app: my-app
-      Tags:
-        Name: !Sub ${AWS::StackName}-EKSNodeGroup
-        # Tag for EKS to discover node groups if using Cluster Autoscaler
-        eks:cluster-name: !Ref EKSClusterName
-
   # CloudWatch Log Group for EKS Cluster logs
   MyEKSLogGroup:
     Type: AWS::Logs::LogGroup
@@ -546,6 +476,88 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub ${AWS::StackName}-EKSLogGroup
+
+  # --- Security Group Ingress and Egress Rules (Defined separately to break dependencies) ---
+
+  # EKS Control Plane Ingress Rule (from EKS Workers)
+  EKSControlPlaneIngressFromEKSWorkers:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !GetAtt SecurityGroupEKSControlPlane.GroupId
+      IpProtocol: tcp
+      FromPort: 443
+      ToPort: 443
+      SourceSecurityGroupId: !GetAtt SecurityGroupEKSWorkers.GroupId
+      Description: Allow EKS worker nodes to communicate with the control plane API
+
+  # EKS Workers Ingress Rules (from EKS Control Plane and self-traffic)
+  EKSWorkersIngressFromEKSControlPlaneAPI:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !GetAtt SecurityGroupEKSWorkers.GroupId
+      IpProtocol: tcp
+      FromPort: 443 # EKS API server port
+      ToPort: 443
+      SourceSecurityGroupId: !GetAtt SecurityGroupEKSControlPlane.GroupId
+      Description: Allow EKS control plane to communicate with worker nodes (API server)
+  EKSWorkersIngressFromEKSControlPlaneKubelet:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !GetAtt SecurityGroupEKSWorkers.GroupId
+      IpProtocol: tcp
+      FromPort: 10250 # Kubelet port
+      ToPort: 10250
+      SourceSecurityGroupId: !GetAtt SecurityGroupEKSControlPlane.GroupId
+      Description: Allow EKS control plane to communicate with worker nodes (Kubelet)
+  EKSWorkersIngressSelfClusterTraffic:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !GetAtt SecurityGroupEKSWorkers.GroupId
+      IpProtocol: -1 # All protocols
+      FromPort: -1
+      ToPort: -1
+      SourceSecurityGroupId: !GetAtt SecurityGroupEKSWorkers.GroupId
+      Description: Allow all traffic within the EKS worker nodes security group
+
+  # EKS Workers Egress Rules
+  EKSWorkersEgressToEKSControlPlane:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      GroupId: !GetAtt SecurityGroupEKSWorkers.GroupId
+      IpProtocol: tcp
+      FromPort: 443
+      ToPort: 443
+      DestinationSecurityGroupId: !GetAtt SecurityGroupEKSControlPlane.GroupId
+      Description: Allow outbound to EKS Control Plane API
+  EKSWorkersEgressToRDS:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      GroupId: !GetAtt SecurityGroupEKSWorkers.GroupId
+      IpProtocol: tcp
+      FromPort: 3306 # MySQL/Aurora port
+      ToPort: 3306
+      DestinationSecurityGroupId: !GetAtt SecurityGroupRDS.GroupId
+      Description: Allow outbound to RDS database
+  EKSWorkersEgressToInternet:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      GroupId: !GetAtt SecurityGroupEKSWorkers.GroupId
+      IpProtocol: -1 # All protocols
+      FromPort: -1
+      ToPort: -1
+      CidrIp: 0.0.0.0/0
+      Description: Allow all outbound internet traffic (via NAT Gateway)
+
+  # RDS Ingress Rule (from EKS Workers)
+  RDSIngressFromEKSWorkers:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !GetAtt SecurityGroupRDS.GroupId
+      IpProtocol: tcp
+      FromPort: 3306 # Default MySQL/Aurora port
+      ToPort: 3306
+      SourceSecurityGroupId: !GetAtt SecurityGroupEKSWorkers.GroupId
+      Description: Allow MySQL traffic from EKS worker nodes
 
 Outputs:
   VpcId:

@@ -26,7 +26,7 @@ class App extends Tasks {
                                 placeholder="Enter Player Name"
                             />
                             <Button className="add-task-btn" color="primary" variant="outlined" type="submit">
-                                Add Task
+                                Add Player
                             </Button>
                         </form>
                         <div className="tasks-list">

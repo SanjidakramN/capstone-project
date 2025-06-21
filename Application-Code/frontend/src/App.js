@@ -41,7 +41,7 @@ class App extends Tasks {
                                         {task.task}
                                     </div>
                                     <Button onClick={() => this.handleDelete(task._id)} color="secondary" className="delete-task-btn">
-                                        Delete
+                                        Remove Player
                                     </Button>
                                 </Paper>
                             ))}

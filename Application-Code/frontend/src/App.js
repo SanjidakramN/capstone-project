@@ -1,7 +1,7 @@
 import React from "react";
 import Tasks from "./Tasks";
 import { Paper, TextField, Checkbox, Button } from "@material-ui/core";
-import "./App.css"; // Update your CSS file accordingly
+import "./App.css";
 
 class App extends Tasks {
     state = { tasks: [], currentTask: "" };
@@ -24,11 +24,23 @@ class App extends Tasks {
                                 required={true}
                                 onChange={this.handleChange}
                                 placeholder="Enter Player Name"
+                                InputProps={{
+                                    style: { color: 'black' },        
+                                }}
+                                inputProps={{
+                                    style: { color: 'black' },        
+                                }}
                             />
-                            <Button className="add-task-btn" color="primary" variant="outlined" type="submit">
+                            <Button
+                                className="add-task-btn"
+                                color="primary"
+                                variant="outlined"
+                                type="submit"
+                            >
                                 Add Player
                             </Button>
                         </form>
+
                         <div className="tasks-list">
                             {tasks.map((task) => (
                                 <Paper key={task._id} className="task-item">
@@ -40,7 +52,11 @@ class App extends Tasks {
                                     <div className={task.completed ? "task-text completed" : "task-text"}>
                                         {task.task}
                                     </div>
-                                    <Button onClick={() => this.handleDelete(task._id)} color="secondary" className="delete-task-btn">
+                                    <Button
+                                        onClick={() => this.handleDelete(task._id)}
+                                        color="secondary"
+                                        className="delete-task-btn"
+                                    >
                                         Remove Player
                                     </Button>
                                 </Paper>
@@ -54,4 +70,3 @@ class App extends Tasks {
 }
 
 export default App;
-

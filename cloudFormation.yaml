@@ -90,7 +90,7 @@ Parameters:
     Description: The name of the database.
   EKSClusterName:
     Type: String
-    Default: MyEKSCluster
+    Default: SanjuEKSCluster
     Description: Name for the EKS Cluster.
   EKSDesiredSize:
     Type: Number

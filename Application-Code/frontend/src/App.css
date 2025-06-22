@@ -38,15 +38,18 @@
 
 .task-input {
     flex-grow: 1;
+    background-color: white;
 }
 
-.add-task-btn, .delete-task-btn {
+.add-task-btn,
+.delete-task-btn {
     flex-shrink: 0;
     box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.2);
     transition: transform 0.1s ease-in-out;
 }
 
-.add-task-btn:hover, .delete-task-btn:hover {
+.add-task-btn:hover,
+.delete-task-btn:hover {
     transform: scale(1.05);
 }
 
@@ -59,7 +62,7 @@
     align-items: center;
     margin-top: 10px;
     padding: 10px;
-    background-color: rgba(34, 139, 34, 0.25); /* forest green */
+    background-color: rgba(34, 139, 34, 0.25);
     border-radius: 8px;
     box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1);
 }
@@ -74,4 +77,14 @@
 .task-text.completed {
     text-decoration: line-through;
     opacity: 0.6;
+}
+
+/* 🔽 New styles for better input readability */
+input {
+    color: black !important;
+    background-color: white !important;
+}
+
+input::placeholder {
+    color: gray !important;
 }

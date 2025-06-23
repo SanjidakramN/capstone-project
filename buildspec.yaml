@@ -30,9 +30,6 @@ phases:
       - cd $FRONTEND_DIR && npm install && cd -
       - cd $BACKEND_DIR && npm install dotenv && npm install && cd -
 
-      - echo Copying .env file to backend directory...
-      - cp .env $BACKEND_DIR/.env
-
   build:
     commands:
       - echo Building Docker images...

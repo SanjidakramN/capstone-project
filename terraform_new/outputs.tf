@@ -25,3 +25,12 @@ output "eks_cluster_name" {
 output "eks_cluster_endpoint" {
   value = aws_eks_cluster.eks.endpoint
 }
+
+output "eks_cluster_ca" {
+  value = aws_eks_cluster.eks.certificate_authority[0].data
+}
+
+# Optional: export node group role ARN if needed later
+output "nodegroup_role_arn" {
+  value = aws_iam_role.eks_nodegroup.arn
+}

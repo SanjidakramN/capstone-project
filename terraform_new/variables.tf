@@ -51,3 +51,10 @@ variable "eks_max_size" {
 variable "eks_min_size" {
   default = 1
 }
+variable "docdb_username" {
+  default = "docdbadmin"
+}
+
+variable "docdb_password" {
+  default = "Rabiyasanju"
+}

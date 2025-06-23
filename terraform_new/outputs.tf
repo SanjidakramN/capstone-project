@@ -34,3 +34,10 @@ output "eks_cluster_ca" {
 output "nodegroup_role_arn" {
   value = aws_iam_role.eks_nodegroup.arn
 }
+output "docdb_endpoint" {
+  value = aws_docdb_cluster.docdb_cluster.endpoint
+}
+
+output "docdb_port" {
+  value = aws_docdb_cluster.docdb_cluster.port
+}

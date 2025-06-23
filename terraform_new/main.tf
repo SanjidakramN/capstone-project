@@ -104,7 +104,6 @@ resource "aws_db_instance" "mysql" {
   engine                  = "mysql"
   engine_version          = "8.0"
   instance_class          = var.db_instance_type
-  # name removed due to unsupported argument for some MySQL versions
   username                = var.db_username
   password                = var.db_password
   db_subnet_group_name    = aws_db_subnet_group.rds.name
@@ -200,4 +199,60 @@ resource "aws_eks_node_group" "nodegroup" {
 
   depends_on = [aws_eks_cluster.eks, aws_iam_role.eks_nodegroup]
   tags       = { Name = "eks-nodegroup" }
+}
+
+# ======== DocumentDB Setup =========
+resource "aws_security_group" "docdb_sg" {
+  name        = "docdb-security-group"
+  description = "Allow access to DocumentDB"
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    from_port   = 27017
+    to_port     = 27017
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "docdb-sg"
+  }
+}
+
+resource "aws_docdb_subnet_group" "docdb_subnet_group" {
+  name       = "docdb-subnet-group"
+  subnet_ids = aws_subnet.private[*].id
+  tags       = {
+    Name = "docdb-subnet-group"
+  }
+}
+
+resource "aws_docdb_cluster" "docdb_cluster" {
+  cluster_identifier       = "sanju-docdb-cluster"
+  engine                   = "docdb"
+  master_username          = var.docdb_username
+  master_password          = var.docdb_password
+  vpc_security_group_ids   = [aws_security_group.docdb_sg.id]
+  db_subnet_group_name     = aws_docdb_subnet_group.docdb_subnet_group.name
+  skip_final_snapshot      = true
+  tags = {
+    Name = "docdb-cluster"
+  }
+}
+
+resource "aws_docdb_cluster_instance" "docdb_instance" {
+  count              = 1
+  identifier         = "sanju-docdb-instance-${count.index}"
+  cluster_identifier = aws_docdb_cluster.docdb_cluster.id
+  instance_class     = "db.t3.medium"
+  tags = {
+    Name = "docdb-instance-${count.index}"
+  }
 }

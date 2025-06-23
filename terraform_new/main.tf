@@ -3,7 +3,7 @@ provider "aws" {
 }
 
 data "aws_eks_cluster" "cluster" {
-  name = aws_eks_cluster.eks.name
+  name       = aws_eks_cluster.eks.name
   depends_on = [aws_eks_cluster.eks]
 }
 
@@ -14,88 +14,88 @@ data "aws_eks_cluster_auth" "cluster" {
 data "aws_availability_zones" "available" {}
 
 resource "aws_vpc" "main" {
-  cidr_block = var.vpc_cidr
-  enable_dns_support = true
+  cidr_block           = var.vpc_cidr
+  enable_dns_support   = true
   enable_dns_hostnames = true
   tags = { Name = "main-vpc" }
 }
 
 resource "aws_subnet" "public" {
-  count = 2
-  vpc_id = aws_vpc.main.id
-  cidr_block = var.public_subnet_cidrs[count.index]
-  availability_zone = data.aws_availability_zones.available.names[count.index]
+  count                   = 2
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = var.public_subnet_cidrs[count.index]
+  availability_zone       = data.aws_availability_zones.available.names[count.index]
   map_public_ip_on_launch = true
   tags = { Name = "public-subnet-${count.index}" }
 }
 
 resource "aws_subnet" "private" {
-  count = 2
-  vpc_id = aws_vpc.main.id
-  cidr_block = var.private_subnet_cidrs[count.index]
+  count             = 2
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = var.private_subnet_cidrs[count.index]
   availability_zone = data.aws_availability_zones.available.names[count.index]
   tags = { Name = "private-subnet-${count.index}" }
 }
 
 resource "aws_internet_gateway" "igw" {
   vpc_id = aws_vpc.main.id
-  tags = { Name = "igw" }
+  tags   = { Name = "igw" }
 }
 
 resource "aws_eip" "nat" {
-  vpc = true
+  depends_on = [aws_internet_gateway.igw]
 }
 
 resource "aws_nat_gateway" "nat" {
   allocation_id = aws_eip.nat.id
   subnet_id     = aws_subnet.public[0].id
-  tags = { Name = "nat-gateway" }
+  tags          = { Name = "nat-gateway" }
 }
 
 resource "aws_route_table" "public" {
   vpc_id = aws_vpc.main.id
-  tags = { Name = "public-rt" }
+  tags   = { Name = "public-rt" }
 }
 
 resource "aws_route" "public_default" {
-  route_table_id = aws_route_table.public.id
+  route_table_id         = aws_route_table.public.id
   destination_cidr_block = "0.0.0.0/0"
-  gateway_id = aws_internet_gateway.igw.id
+  gateway_id             = aws_internet_gateway.igw.id
 }
 
 resource "aws_route_table_association" "public" {
-  count = 2
-  subnet_id = aws_subnet.public[count.index].id
+  count          = 2
+  subnet_id      = aws_subnet.public[count.index].id
   route_table_id = aws_route_table.public.id
 }
 
 resource "aws_route_table" "private" {
   vpc_id = aws_vpc.main.id
-  tags = { Name = "private-rt" }
+  tags   = { Name = "private-rt" }
 }
 
 resource "aws_route" "private_default" {
-  route_table_id = aws_route_table.private.id
+  route_table_id         = aws_route_table.private.id
   destination_cidr_block = "0.0.0.0/0"
-  nat_gateway_id = aws_nat_gateway.nat.id
+  nat_gateway_id         = aws_nat_gateway.nat.id
 }
 
 resource "aws_route_table_association" "private" {
-  count = 2
-  subnet_id = aws_subnet.private[count.index].id
+  count          = 2
+  subnet_id      = aws_subnet.private[count.index].id
   route_table_id = aws_route_table.private.id
 }
 
 resource "aws_security_group" "rds" {
-  name = "rds-sg"
+  name   = "rds-sg"
   vpc_id = aws_vpc.main.id
-  tags = { Name = "rds-sg" }
+  tags   = { Name = "rds-sg" }
 }
 
 resource "aws_db_subnet_group" "rds" {
   name       = "rds-subnet-group"
   subnet_ids = aws_subnet.private[*].id
-  tags = { Name = "rds-subnet-group" }
+  tags       = { Name = "rds-subnet-group" }
 }
 
 resource "aws_db_instance" "mysql" {
@@ -104,7 +104,7 @@ resource "aws_db_instance" "mysql" {
   engine                  = "mysql"
   engine_version          = "8.0"
   instance_class          = var.db_instance_type
-  name                    = var.db_name
+  # name removed due to unsupported argument for some MySQL versions
   username                = var.db_username
   password                = var.db_password
   db_subnet_group_name    = aws_db_subnet_group.rds.name
@@ -112,11 +112,12 @@ resource "aws_db_instance" "mysql" {
   multi_az                = true
   backup_retention_period = 7
   skip_final_snapshot     = true
-  tags = { Name = "rds-db-instance" }
+  tags                    = { Name = "rds-db-instance" }
 }
 
 resource "aws_iam_role" "eks_cluster" {
   name = "eks-cluster-role"
+
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
@@ -127,11 +128,18 @@ resource "aws_iam_role" "eks_cluster" {
       }
     }]
   })
-  managed_policy_arns = [
-    "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy",
-    "arn:aws:iam::aws:policy/AmazonEKSVPCResourceController"
-  ]
+
   tags = { Name = "eks-cluster-role" }
+}
+
+resource "aws_iam_role_policy_attachment" "eks_cluster_policy" {
+  role       = aws_iam_role.eks_cluster.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
+}
+
+resource "aws_iam_role_policy_attachment" "eks_vpc_controller" {
+  role       = aws_iam_role.eks_cluster.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSVPCResourceController"
 }
 
 resource "aws_eks_cluster" "eks" {
@@ -143,11 +151,12 @@ resource "aws_eks_cluster" "eks" {
   }
 
   depends_on = [aws_iam_role.eks_cluster]
-  tags = { Name = "eks-cluster" }
+  tags       = { Name = "eks-cluster" }
 }
 
 resource "aws_iam_role" "eks_nodegroup" {
   name = "eks-nodegroup-role"
+
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
@@ -158,12 +167,23 @@ resource "aws_iam_role" "eks_nodegroup" {
       }
     }]
   })
-  managed_policy_arns = [
-    "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy",
-    "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy",
-    "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
-  ]
+
   tags = { Name = "eks-nodegroup-role" }
+}
+
+resource "aws_iam_role_policy_attachment" "eks_worker_policy" {
+  role       = aws_iam_role.eks_nodegroup.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
+}
+
+resource "aws_iam_role_policy_attachment" "eks_cni_policy" {
+  role       = aws_iam_role.eks_nodegroup.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
+}
+
+resource "aws_iam_role_policy_attachment" "ecr_read_policy" {
+  role       = aws_iam_role.eks_nodegroup.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
 }
 
 resource "aws_eks_node_group" "nodegroup" {
@@ -179,5 +199,5 @@ resource "aws_eks_node_group" "nodegroup" {
   }
 
   depends_on = [aws_eks_cluster.eks, aws_iam_role.eks_nodegroup]
-  tags = { Name = "eks-nodegroup" }
+  tags       = { Name = "eks-nodegroup" }
 }

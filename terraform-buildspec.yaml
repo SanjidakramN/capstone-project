@@ -7,7 +7,7 @@ phases:
     commands:
       - echo "Installing Terraform..."
       - curl -LO https://releases.hashicorp.com/terraform/1.6.6/terraform_1.6.6_linux_amd64.zip
-      # 👉 Check and rename or remove existing 'terraform' directory
+      # Check and rename existing terraform directory to prevent unzip conflict
       - |
         if [ -d terraform ]; then
           echo "Found existing 'terraform' directory. Renaming it..."
@@ -22,7 +22,8 @@ phases:
   pre_build:
     commands:
       - echo "Initializing Terraform backend..."
-      - terraform init \
+      - |
+        terraform init \
           -backend-config="bucket=sanju-terraform-state-eks" \
           -backend-config="key=eks-rds-fullstack/terraform.tfstate" \
           -backend-config="region=us-east-1" \

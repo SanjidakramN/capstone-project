@@ -1,0 +1,4 @@
+node_modules/
+logs/
+*.log
+# .env  ← This is commented out so `.env` gets included

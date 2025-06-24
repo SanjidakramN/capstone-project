@@ -23,10 +23,10 @@ phases:
       - echo "Initializing Terraform backend..."
       - |
         terraform -chdir=terraform_new init \
-          -backend-config="bucket=sanju-terraform-state-eks" \
+          -backend-config="bucket=sanju-terraform-news3" \
           -backend-config="key=eks-rds-fullstack/terraform.tfstate" \
           -backend-config="region=us-east-1" \
-          -backend-config="dynamodb_table=terraform-lock-table" \
+          -backend-config="dynamodb_table=sanju-terraform-lock" \
           -backend-config="encrypt=true"
 
   build:

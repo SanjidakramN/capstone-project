@@ -1,5 +1,5 @@
 variable "aws_region" {
-  default = "us-east-2" # Set to your desired region
+  default = "us-west-1" # Set to your desired region
 }
 
 variable "vpc_cidr" {
@@ -37,7 +37,7 @@ variable "db_name" {
 }
 
 variable "eks_cluster_name" {
-  default = "SanjuEKSCluster-terra"
+  default = "SanjuEKSCluster-terraform"
 }
 
 variable "eks_desired_size" {

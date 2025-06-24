@@ -1,5 +1,5 @@
 variable "aws_region" {
-  default = "us-west-1" # Set to your desired region
+  default = "us-west-2" # Set to your desired region
 }
 
 variable "vpc_cidr" {

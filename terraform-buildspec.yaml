@@ -23,4 +23,21 @@ phases:
       - echo "Initializing Terraform backend..."
       - |
         terraform -chdir=terraform_new init \
-          -backend-config="bucket=sanju-terr
+          -backend-config="bucket=sanju-terraform-news3" \
+          -backend-config="key=eks-rds-fullstack/terraform.tfstate" \
+          -backend-config="region=us-east-1" \
+          -backend-config="dynamodb_table=sanju-terraform-lock" \
+          -backend-config="encrypt=true"
+
+  build:
+    commands:
+      - echo "Validating Terraform code..."
+      - terraform -chdir=terraform_new validate
+      - echo "Running Terraform plan..."
+      - terraform -chdir=terraform_new plan -out=tfplan
+
+  post_build:
+    commands:
+      - echo "Applying Terraform plan..."
+      - terraform -chdir=terraform_new apply -auto-approve tfplan
+      - echo "Terraform deployment completed."

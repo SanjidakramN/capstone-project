@@ -23,21 +23,4 @@ phases:
       - echo "Initializing Terraform backend..."
       - |
         terraform -chdir=terraform_new init \
-          -backend-config="bucket=sanju-terraform-news3" \
-          -backend-config="key=eks-rds-fullstack/terraform.tfstate" \
-          -backend-config="region=us-east-1" \
-          -backend-config="dynamodb_table=sanju-terraform-lock" \
-          -backend-config="encrypt=true"
-
-  build:
-    commands:
-      - echo "Checking if Terraform state exists in S3..."
-      - |
-        STATE_EXISTS=$(aws s3 ls s3://sanju-terraform-news3/eks-rds-fullstack/terraform.tfstate || echo "no")
-        if [[ "$STATE_EXISTS" != "no" ]]; then
-          echo "State file exists. Destroying infrastructure before applying..."
-          terraform -chdir=terraform_new destroy -auto-approve || echo "Destroy failed or nothing to destroy"
-        else
-          echo "No existing state found. Skipping destroy."
-        fi
-      
+          -backend-config="bucket=sanju-terr

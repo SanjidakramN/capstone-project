@@ -31,13 +31,13 @@ phases:
 
   build:
     commands:
-      - echo "Validating Terraform code..."
-      - terraform -chdir=terraform_new validate
-      - echo "Running Terraform plan..."
-      - terraform -chdir=terraform_new plan -out=tfplan
-
-  post_build:
-    commands:
-      - echo "Applying Terraform plan..."
-      - terraform -chdir=terraform_new apply -auto-approve tfplan
-      - echo "Terraform deployment completed."
+      - echo "Checking if Terraform state exists in S3..."
+      - |
+        STATE_EXISTS=$(aws s3 ls s3://sanju-terraform-news3/eks-rds-fullstack/terraform.tfstate || echo "no")
+        if [[ "$STATE_EXISTS" != "no" ]]; then
+          echo "State file exists. Destroying infrastructure before applying..."
+          terraform -chdir=terraform_new destroy -auto-approve || echo "Destroy failed or nothing to destroy"
+        else
+          echo "No existing state found. Skipping destroy."
+        fi
+      

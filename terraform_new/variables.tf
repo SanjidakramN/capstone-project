@@ -37,7 +37,7 @@ variable "db_name" {
 }
 
 variable "eks_cluster_name" {
-  default = "SanjuEKSCluster"
+  default = "SanjuEKSCluster-terra"
 }
 
 variable "eks_desired_size" {

@@ -16,12 +16,13 @@ phases:
       nodejs: 18
     commands:
       - echo Installing utilities...
-      - yum install -y jq unzip
+      - yum install -y jq unzip wget
       - echo Installing SonarScanner...
-      - curl -sSLo sonar-scanner-cli.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-5.0.1.3006-linux.zip
-      - unzip sonar-scanner-cli.zip
-      - mv sonar-scanner-* sonar-scanner
+      - wget https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-5.0.1.3006-linux.zip
+      - unzip sonar-scanner-cli-5.0.1.3006-linux.zip
+      - mv sonar-scanner-5.0.1.3006-linux sonar-scanner
       - export PATH=$PATH:$(pwd)/sonar-scanner/bin
+      - echo 'export PATH=$PATH:$(pwd)/sonar-scanner/bin' >> ~/.bashrc
 
   pre_build:
     commands:

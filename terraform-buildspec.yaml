@@ -31,23 +31,13 @@ phases:
 
   build:
     commands:
-      - echo "Importing existing resources into Terraform state (if needed)..."
-      - terraform -chdir=terraform_new import aws_eks_cluster.eks SanjuEKSCluster-terraform || echo "EKS already imported or not found"
-      - terraform -chdir=terraform_new import aws_db_instance.mysql my-rds-db || echo "RDS already imported or not found"
-      - terraform -chdir=terraform_new import 'aws_docdb_cluster_instance.docdb_instance[0]' sanju-docdb-instance-0 || echo "DocDB already imported or not found"
-      
       - echo "Validating Terraform code..."
       - terraform -chdir=terraform_new validate
-
       - echo "Running Terraform plan..."
-      - terraform -chdir=terraform_new plan -out=tfplan || echo "Terraform plan failed"
+      - terraform -chdir=terraform_new plan -out=tfplan
 
   post_build:
     commands:
-      - echo "Applying Terraform plan if available..."
-      - |
-        if [ -f terraform_new/tfplan ]; then
-          terraform -chdir=terraform_new apply -auto-approve tfplan
-          echo "Terraform deployment completed."
-        else
-          echo "No tfplan found. Skipping apply phase."
+      - echo "Applying Terraform plan..."
+      - terraform -chdir=terraform_new apply -auto-approve tfplan
+      - echo "Terraform deployment completed."

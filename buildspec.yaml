@@ -16,7 +16,12 @@ phases:
       nodejs: 18
     commands:
       - echo Installing utilities...
-      - yum install -y jq
+      - yum install -y jq unzip
+      - echo Installing SonarScanner...
+      - curl -sSLo sonar-scanner-cli.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-5.0.1.3006-linux.zip
+      - unzip sonar-scanner-cli.zip
+      - mv sonar-scanner-* sonar-scanner
+      - export PATH=$PATH:$(pwd)/sonar-scanner/bin
 
   pre_build:
     commands:
@@ -32,6 +37,13 @@ phases:
 
   build:
     commands:
+      - echo Running SonarQube scan...
+      - sonar-scanner \
+          -Dsonar.projectKey=playerslist \
+          -Dsonar.sources=. \
+          -Dsonar.host.url=http://18.212.217.245 \
+          -Dsonar.login=sqp_ba1336c4d48188123a5cb0c4b98461522b71d5f4
+
       - echo Building Docker images...
       - docker build -t $FRONTEND_REPO:$IMAGE_TAG $FRONTEND_DIR
       - docker tag $FRONTEND_REPO:$IMAGE_TAG ${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com/$FRONTEND_REPO:$IMAGE_TAG

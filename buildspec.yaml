@@ -15,32 +15,32 @@ phases:
     runtime-versions:
       nodejs: 18
     commands:
-      - echo Installing required tools...
-      - yum install -y jq unzip wget
-      - echo Downloading and installing SonarScanner...
-      - wget https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-5.0.1.3006-linux.zip
-      - unzip sonar-scanner-cli-5.0.1.3006-linux.zip
-      - mv sonar-scanner-5.0.1.3006-linux sonar-scanner
+      - echo Installing utilities...
+      - yum install -y jq unzip
+      - echo Installing SonarScanner...
+      - curl -sSLo sonar-scanner-cli.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-5.0.1.3006-linux.zip
+      - unzip sonar-scanner-cli.zip
+      - mv sonar-scanner-* sonar-scanner
       - export PATH=$PATH:$(pwd)/sonar-scanner/bin
-      - echo 'export PATH=$PATH:$(pwd)/sonar-scanner/bin' >> ~/.bashrc
 
   pre_build:
     commands:
-      - echo Setting image tag based on build number...
+      - echo Setting dynamic image tag...
       - export IMAGE_TAG=v1.${CODEBUILD_BUILD_NUMBER}
 
-      - echo Logging into Amazon ECR...
+      - echo Logging in to Amazon ECR...
       - aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin ${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com
 
-      - echo Installing frontend dependencies...
+      - echo Installing frontend and backend dependencies...
       - cd $FRONTEND_DIR && npm install && cd -
-      - echo Installing backend dependencies...
       - cd $BACKEND_DIR && npm install dotenv && npm install && cd -
 
   build:
     commands:
       - echo Running SonarQube scan...
-      - sonar-scanner -X \
+      - |
+        sonar-scanner \
+          -X \
           -Dsonar.projectKey=playerslist \
           -Dsonar.sources=. \
           -Dsonar.host.url=http://18.212.217.245 \
@@ -57,11 +57,11 @@ phases:
 
   post_build:
     commands:
-      - echo Pushing Docker images to Amazon ECR...
+      - echo Pushing Docker images to ECR...
       - docker push ${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com/$FRONTEND_REPO:$IMAGE_TAG
       - docker push ${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com/$BACKEND_REPO:$IMAGE_TAG
 
-      - echo Preparing Kubernetes manifest output...
+      - echo Preparing Kubernetes manifest output directory...
       - mkdir -p k8s-out
 
       # --- FRONTEND ---
@@ -81,7 +81,7 @@ phases:
       - cp $K8S_MANIFEST_DIR/ingress.yaml k8s-out/ingress.yaml || true
 
       # --- DEBUG ---
-      - echo "✅ Final list of generated Kubernetes YAML files:"
+      - echo "Final list of generated Kubernetes YAML files:"
       - find k8s-out/
 
 artifacts:

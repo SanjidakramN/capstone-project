@@ -9,6 +9,9 @@ env:
     FRONTEND_DIR: Application-Code/frontend
     BACKEND_DIR: Application-Code/backend
     K8S_MANIFEST_DIR: Kubernetes-Manifests-file
+    SONAR_HOST_URL: http://18.212.217.245
+    SONAR_PROJECT_KEY: playerslist
+    SONAR_TOKEN: sqp_ba1336c4d48188123a5cb0c4b98461522b71d5f4
 
 phases:
   install:
@@ -17,11 +20,10 @@ phases:
     commands:
       - echo Installing utilities...
       - yum install -y jq unzip
-      - echo Installing SonarScanner...
-      - curl -sSLo sonar-scanner-cli.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-5.0.1.3006-linux.zip
-      - unzip sonar-scanner-cli.zip
-      - mv sonar-scanner-* sonar-scanner
-      - export PATH=$PATH:$(pwd)/sonar-scanner/bin
+      - echo Downloading and installing SonarScanner...
+      - curl -sSLo sonar-scanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.8.0.2856-linux.zip
+      - unzip -q sonar-scanner.zip
+      - export PATH=$PATH:$(pwd)/sonar-scanner-4.8.0.2856-linux/bin
 
   pre_build:
     commands:
@@ -38,14 +40,7 @@ phases:
   build:
     commands:
       - echo Running SonarQube scan...
-      - |
-        sonar-scanner \
-          -X \
-          -Dsonar.projectKey=playerslist \
-          -Dsonar.sources=. \
-          -Dsonar.host.url=http://18.212.217.245 \
-          -Dsonar.login=sqp_ba1336c4d48188123a5cb0c4b98461522b71d5f4 \
-        || echo "⚠️ SonarQube scan failed — continuing build"
+      - sonar-scanner -Dsonar.projectKey=$SONAR_PROJECT_KEY -Dsonar.sources=. -Dsonar.host.url=$SONAR_HOST_URL -Dsonar.login=$SONAR_TOKEN || echo "⚠️ SonarQube scan failed — continuing build"
 
       - echo Building Docker image for frontend...
       - docker build -t $FRONTEND_REPO:$IMAGE_TAG $FRONTEND_DIR
@@ -80,8 +75,7 @@ phases:
       # --- INGRESS ---
       - cp $K8S_MANIFEST_DIR/ingress.yaml k8s-out/ingress.yaml || true
 
-      # --- DEBUG ---
-      - echo "Final list of generated Kubernetes YAML files:"
+      - echo Final list of generated Kubernetes YAML files:
       - find k8s-out/
 
 artifacts:

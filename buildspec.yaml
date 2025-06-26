@@ -40,10 +40,10 @@ phases:
       - echo Running SonarQube scan...
       - |
         sonar-scanner \
-          -Dsonar.projectKey=playerslist \
-          -Dsonar.sources=. \
-          -Dsonar.host.url=http://18.212.217.245 \
-          -Dsonar.login=sqp_ba1336c4d48188123a5cb0c4b98461522b71d5f4 \
+            -Dsonar.projectKey=main \
+            -Dsonar.sources=. \
+            -Dsonar.host.url=http://18.212.217.245 \
+            -Dsonar.login=sqp_95ef8cdf54c519043840ebeac70c5b1b38d6cecb
         || echo "⚠️ SonarQube scan failed — continuing build"
 
       - echo Building Docker image for frontend...
